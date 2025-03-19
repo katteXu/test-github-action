@@ -74,18 +74,20 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
-          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
+
+      - name: Install dependencies
+        run: yarn install
 
       - name: Build Tauri bundle
-        run: |
-          yarn install \
-          && yarn run tauri build --target ${{ matrix.target }}
+        run: yarn run tauri build --target ${{ matrix.target }}
 
       - name: Prepare assets
         shell: bash
-        run: |
-          tar -cvzf ${{ matrix.target }}.tar.gz \
-            src-tauri/target/release/bundle
+        run: ls -l
+        # run: |
+        #   tar -cvzf ${{ matrix.target }}.tar.gz \
+        #     src-tauri/target/release/bundle
 
       - name: Declare some variables
         id: vars
