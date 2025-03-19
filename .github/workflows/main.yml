@@ -21,7 +21,7 @@ jobs:
         platform: [
             # macos-x86_64,
             # macos-arm64,
-            macos-universal
+            macos-universal,
             linux-x86_64-gnu,
             # linux-arm64-musl,
             windows-x86_64,
