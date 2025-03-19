@@ -40,12 +40,12 @@ jobs:
 
           - platform: linux-x86_64-musl
             target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
+            os: ubuntu-22.04
             bin: ntpclient
 
           - platform: linux-arm64-musl
             target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
+            os: ubuntu-22.04
             bin: ntpclient
 
           - platform: windows-x86_64
@@ -64,10 +64,17 @@ jobs:
         with:
           fetch-depth: 0 # fix revision count
 
-      - uses: Swatinem/rust-cache@v2
+      - name: install dependencies (ubuntu only)
+        if: matrix.os == 'ubuntu-22.04' # This must match the platform value defined above.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          prefix-key: ${{ matrix.target }}-main
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: install frontend dependencies
         run: yarn install # change this to npm, pnpm or bun depending on which one you use.
@@ -85,7 +92,7 @@ jobs:
         shell: bash
         run: |
           tar -cvzf ${{ matrix.target }}.tar.gz \
-            src-tauri/target/bundle
+            src-tauri/target/release/bundle
 
       - name: Declare some variables
         id: vars
