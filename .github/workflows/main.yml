@@ -79,8 +79,8 @@ jobs:
       - name: Build Tauri bundle
         run: |
           yarn install \
-            yarn add bun -g \
-            bun run tauri build --target ${{ matrix.target }}
+          && yarn add bun -g \
+          && bun run tauri build --target ${{ matrix.target }}
 
       - name: Prepare assets
         shell: bash
