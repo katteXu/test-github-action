@@ -84,7 +84,7 @@ jobs:
 
       - name: Prepare assets
         shell: bash
-        run: tree
+        run: find  src-tauri -type d -maxdepth 3
         # run: |
         #   tar -cvzf ${{ matrix.target }}.tar.gz \
         #     src-tauri/target/release/bundle
