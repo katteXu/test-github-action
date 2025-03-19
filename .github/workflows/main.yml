@@ -82,10 +82,8 @@ jobs:
       - name: Prepare assets
         shell: bash
         run: |
-          cd src-tauri
           tar -cvzf ${{ matrix.target }}.tar.gz \
-            target/${{ matrix.target }}/release/bundle
-          cd ..
+            src-tauri/target/${{ matrix.target }}/release/bundle
 
       - name: Declare some variables
         id: vars
