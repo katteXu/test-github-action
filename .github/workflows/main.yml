@@ -85,6 +85,7 @@ jobs:
           cd src-tauri
           tar -cvzf ${{ matrix.target }}.tar.gz \
             target/${{ matrix.target }}/release/bundle
+          cd ..
 
       - name: Declare some variables
         id: vars
