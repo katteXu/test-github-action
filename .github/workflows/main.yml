@@ -68,7 +68,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' # This must match the platform value defined above.
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -85,8 +85,9 @@ jobs:
       - name: Prepare assets
         shell: bash
         run: |
+          cd src-tauri
           tar -cvzf ${{ matrix.target }}.tar.gz \
-            src-tauri/target/${{ matrix.target }}/release/bundle
+            target/${{ matrix.target }}/release/bundle
 
       - name: Declare some variables
         id: vars
