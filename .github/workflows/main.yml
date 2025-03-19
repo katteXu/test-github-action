@@ -1,66 +1,103 @@
-name: "publish"
+# GitHub Actions工作流配置文件
+
+name: Build and Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*.*.*" # 当推送符合模式v*.*.*的标签时触发工作流
+  workflow_dispatch:
 
-# This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
+permissions:
+  contents: write # 允许写入仓库内容
 
 jobs:
-  publish-tauri:
-    permissions:
-      contents: write
+  release:
+    name: Release on ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        platform:
+          [
+            macos-x86_64,
+            macos-arm64,
+            linux-x86_64-musl,
+            linux-arm64-musl,
+            windows-x86_64,
+            windows-arm64,
+          ]
         include:
-          # - platform: "macos-latest" # for Arm based macs (M1 and above).
-          #   args: "--target aarch64-apple-darwin"
-          # - platform: "macos-latest" # for Intel based macs.
-          #   args: "--target x86_64-apple-darwin"
-          - platform: "macos-latest" # for Arm based macs (M1 and above).
-            args: "--target universal-apple-darwin"
-          - platform: "ubuntu-22.04" # for Tauri v1 you could replace this with ubuntu-20.04.
-            args: ""
-          - platform: "windows-latest"
-            args: ""
+          - platform: macos-x86_64
+            target: x86_64-apple-darwin
+            os: macos-latest
+            bin: ntpclient
 
-    runs-on: ${{ matrix.platform }}
+          - platform: macos-arm64
+            target: aarch64-apple-darwin
+            os: macos-latest
+            bin: ntpclient
+
+          - platform: linux-x86_64-musl
+            target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            bin: ntpclient
+
+          - platform: linux-arm64-musl
+            target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            bin: ntpclient
+
+          - platform: windows-x86_64
+            target: x86_64-pc-windows-msvc
+            os: windows-latest
+            bin: ntpclient.exe
+
+          - platform: windows-arm64
+            target: aarch64-pc-windows-msvc
+            os: windows-latest
+            bin: ntpclient.exe
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: setup node
-        uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          node-version: lts/*
+          fetch-depth: 0 # fix revision count
 
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-          # targets: ${{ matrix.platform == 'macos-latest' && 'universal-apple-darwin' || '' }}
-
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-        # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
-        # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
+          prefix-key: ${{ matrix.target }}-main
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: install frontend dependencies
         run: yarn install # change this to npm, pnpm or bun depending on which one you use.
       - name: install bun
         run: yarn add bun -g
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build debug binary
+        uses: houseabsolute/actions-rust-cross@v0
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: "App v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
-          releaseDraft: true
+          command: "bun tauri build"
+          target: ${{ matrix.target }}
+          strip: true
+
+      - name: Prepare assets
+        shell: bash
+        run: |
+          tar -cvzf ${{ matrix.target }}.tar.gz \
+            src-tauri/target/bundle
+
+      - name: Declare some variables
+        id: vars
+        shell: bash
+        run: |
+          rev_count=$(git rev-list --count HEAD)
+          echo rev_count=${rev_count} >> $GITHUB_OUTPUT
+
+      - name: Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.target }}.tar.gz
+          tag_name: r${{ steps.vars.outputs.rev_count }}
           prerelease: false
-          args: ${{ matrix.args }}
+          make_latest: true
